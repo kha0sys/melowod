@@ -1,0 +1,74 @@
+{
+  "functions": {
+    "source": ".",
+    "runtime": "go121",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log"
+    ],
+    "predeploy": [
+      "go mod download",
+      "go mod verify"
+    ]
+  },
+  "hosting": {
+    "public": "../frontend/out",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/api/auth/signup",
+        "function": "SignUp"
+      },
+      {
+        "source": "/api/auth/signin",
+        "function": "SignIn"
+      },
+      {
+        "source": "/api/auth/reset-password",
+        "function": "SendPasswordReset"
+      },
+      {
+        "source": "/api/auth/verify-email",
+        "function": "SendEmailVerification"
+      },
+      {
+        "source": "/api/wods",
+        "function": "CreateDailyWod,GetWodByDate"
+      },
+      {
+        "source": "/api/wods/results",
+        "function": "SubmitWodResult"
+      },
+      {
+        "source": "/api/wods/leaderboard",
+        "function": "GetLeaderboard"
+      },
+      {
+        "source": "/api/users",
+        "function": "CreateUser,GetUser"
+      },
+      {
+        "source": "/api/users/stats",
+        "function": "GetUserStats"
+      },
+      {
+        "source": "/api/rankings/global",
+        "function": "GetGlobalRanking"
+      },
+      {
+        "source": "/api/rankings/box",
+        "function": "GetBoxRanking"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
