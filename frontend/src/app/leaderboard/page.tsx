@@ -110,31 +110,32 @@ export default function LeaderboardPage() {
 
       {/* Tabla de resultados */}
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-secondary">
-              <th className="p-4 text-left">#</th>
-              <th className="p-4 text-left">Nombre</th>
-              <th className="p-4 text-left">Tiempo</th>
-              <th className="p-4 text-left">Nivel</th>
-              <th className="p-4 text-left">Género</th>
-              <th className="p-4 text-left">Ubicación</th>
-              <th className="p-4 text-left">Box</th>
+        <table className="w-full border-collapse" role="table">
+          <thead role="rowgroup">
+            <tr className="bg-secondary" role="row">
+              <th className="p-4 text-left" role="columnheader" scope="col">#</th>
+              <th className="p-4 text-left" role="columnheader" scope="col">Nombre</th>
+              <th className="p-4 text-left" role="columnheader" scope="col">Tiempo</th>
+              <th className="p-4 text-left" role="columnheader" scope="col">Nivel</th>
+              <th className="p-4 text-left" role="columnheader" scope="col">Género</th>
+              <th className="p-4 text-left" role="columnheader" scope="col">Ubicación</th>
+              <th className="p-4 text-left" role="columnheader" scope="col">Box</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody role="rowgroup">
             {results.map((result, index) => (
               <tr
                 key={index}
                 className="border-b hover:bg-secondary/50 transition-colors"
+                role="row"
               >
-                <td className="p-4">{result.rank}</td>
-                <td className="p-4">{result.name}</td>
-                <td className="p-4 font-mono">{result.time}</td>
-                <td className="p-4">{result.level}</td>
-                <td className="p-4">{result.gender}</td>
-                <td className="p-4">{result.location}</td>
-                <td className="p-4">{result.box}</td>
+                <td className="p-4" role="cell">{result.rank}</td>
+                <td className="p-4" role="cell">{result.name}</td>
+                <td className="p-4 font-mono" role="cell">{result.time}</td>
+                <td className="p-4" role="cell">{result.level}</td>
+                <td className="p-4" role="cell">{result.gender}</td>
+                <td className="p-4" role="cell">{result.location}</td>
+                <td className="p-4" role="cell">{result.box}</td>
               </tr>
             ))}
           </tbody>

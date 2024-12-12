@@ -3,50 +3,127 @@ import {
   signInWithEmailAndPassword,
   signOut,
   sendEmailVerification,
-  sendPasswordResetEmail as firebaseSendPasswordReset,
+  sendPasswordResetEmail,
+  GoogleAuthProvider,
+  signInWithPopup,
+  onAuthStateChanged,
+  getIdToken,
   User as FirebaseUser,
+  UserCredential,
+  linkWithPopup,
+  updateProfile,
+  updateEmail,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase/config';
-import { SignUpRequest, SignInRequest, AuthError, AuthUser } from '@/types/auth';
-import { User } from '@/types/user';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, increment } from 'firebase/firestore';
+import { auth, db } from '@/config/firebase';
+import { 
+  SignUpRequest, 
+  SignInRequest, 
+  AuthError, 
+  User, 
+  UpdateProfileRequest,
+  UserRole 
+} from '@/domain/entities/User';
+import { ErrorHandler } from '@/lib/utils/error-handler';
+import { withRetry } from '@/lib/utils/retry';
+
+const RATE_LIMIT_ATTEMPTS = 5;
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
 
 export class AuthService {
-  async signUp(data: SignUpRequest): Promise<FirebaseUser> {
-    const { email, password, firstName, lastName, ...userData } = data;
-    
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const { user } = userCredential;
+  private rateLimitMap: Map<string, { attempts: number; timestamp: number }> = new Map();
 
-      // Guardar datos adicionales del usuario en Firestore
-      await setDoc(doc(db, 'users', user.uid), {
-        ...userData,
-        firstName,
-        lastName,
-        email,
-        id: user.uid,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+  private checkRateLimit(email: string): void {
+    const now = Date.now();
+    const rateLimit = this.rateLimitMap.get(email);
 
-      // Enviar email de verificación
-      await sendEmailVerification(user);
-
-      return user;
-    } catch (error) {
-      console.error('Error in signUp:', error);
-      throw this.handleAuthError(error);
+    if (rateLimit) {
+      if (now - rateLimit.timestamp > RATE_LIMIT_WINDOW) {
+        this.rateLimitMap.set(email, { attempts: 1, timestamp: now });
+      } else if (rateLimit.attempts >= RATE_LIMIT_ATTEMPTS) {
+        throw new Error('Too many attempts. Please try again later.');
+      } else {
+        this.rateLimitMap.set(email, {
+          attempts: rateLimit.attempts + 1,
+          timestamp: rateLimit.timestamp,
+        });
+      }
+    } else {
+      this.rateLimitMap.set(email, { attempts: 1, timestamp: now });
     }
   }
 
-  async signIn(data: SignInRequest): Promise<FirebaseUser> {
+  async signUp(request: SignUpRequest): Promise<void> {
     try {
-      const { user } = await signInWithEmailAndPassword(auth, data.email, data.password);
-      return user;
+      this.checkRateLimit(request.email);
+      
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        request.email,
+        request.password
+      );
+
+      const { user } = userCredential;
+
+      // Create user profile in Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        email: request.email,
+        firstName: request.firstName,
+        lastName: request.lastName,
+        role: UserRole.USER,
+        isEmailVerified: false,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      // Update Firebase Auth Profile
+      await updateProfile(user, {
+        displayName: `${request.firstName} ${request.lastName}`
+      });
+
+      await sendEmailVerification(user);
     } catch (error) {
-      console.error('Error in signIn:', error);
-      throw this.handleAuthError(error);
+      throw ErrorHandler.handle(error as AuthError);
+    }
+  }
+
+  async signIn(request: SignInRequest): Promise<void> {
+    try {
+      this.checkRateLimit(request.email);
+      await signInWithEmailAndPassword(auth, request.email, request.password);
+    } catch (error) {
+      throw ErrorHandler.handle(error as AuthError);
+    }
+  }
+
+  async signInWithGoogle(): Promise<void> {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Check if user exists in Firestore
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      
+      if (!userDoc.exists()) {
+        // Create new user profile
+        const names = user.displayName?.split(' ') || ['', ''];
+        await setDoc(doc(db, 'users', user.uid), {
+          email: user.email,
+          firstName: names[0],
+          lastName: names.slice(1).join(' '),
+          role: UserRole.USER,
+          isEmailVerified: user.emailVerified,
+          photoURL: user.photoURL,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      }
+    } catch (error) {
+      throw ErrorHandler.handle(error as AuthError);
     }
   }
 
@@ -54,76 +131,64 @@ export class AuthService {
     try {
       await signOut(auth);
     } catch (error) {
-      console.error('Error in signOut:', error);
-      throw this.handleAuthError(error);
+      throw ErrorHandler.handle(error as AuthError);
     }
   }
 
-  async sendPasswordResetEmail(email: string): Promise<void> {
-    try {
-      await firebaseSendPasswordReset(auth, email);
-    } catch (error) {
-      console.error('Error sending password reset email:', error);
-      throw this.handleAuthError(error);
-    }
+  async getCurrentUser(): Promise<User | null> {
+    return new Promise((resolve) => {
+      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        unsubscribe();
+        if (!firebaseUser) {
+          resolve(null);
+          return;
+        }
+
+        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        if (!userDoc.exists()) {
+          resolve(null);
+          return;
+        }
+
+        const userData = userDoc.data() as User;
+        resolve({
+          ...userData,
+          id: firebaseUser.uid
+        });
+      });
+    });
   }
 
-  async sendEmailVerification(user: FirebaseUser): Promise<void> {
+  async updateProfile(userId: string, data: UpdateProfileRequest): Promise<void> {
     try {
-      await sendEmailVerification(user);
-    } catch (error) {
-      console.error('Error sending verification email:', error);
-      throw this.handleAuthError(error);
-    }
-  }
+      const user = auth.currentUser;
+      if (!user) throw new Error('No authenticated user');
 
-  async getUserData(userId: string): Promise<Partial<AuthUser>> {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      if (userDoc.exists()) {
-        return userDoc.data() as Partial<AuthUser>;
+      await updateDoc(doc(db, 'users', userId), {
+        ...data,
+        updatedAt: serverTimestamp()
+      });
+
+      if (data.firstName || data.lastName) {
+        const currentUser = await this.getCurrentUser();
+        await updateProfile(user, {
+          displayName: `${data.firstName || currentUser?.firstName} ${
+            data.lastName || currentUser?.lastName
+          }`
+        });
       }
-      return {};
     } catch (error) {
-      console.error('Error getting user data:', error);
-      return {};
+      throw ErrorHandler.handle(error as AuthError);
     }
   }
 
-  getCurrentUser(): FirebaseUser | null {
-    return auth.currentUser;
-  }
-
-  isAuthenticated(): boolean {
-    return !!this.getCurrentUser();
-  }
-
-  onAuthStateChanged(callback: (user: FirebaseUser | null) => void): () => void {
-    return auth.onAuthStateChanged(callback);
-  }
-
-  private handleAuthError(error: any): AuthError {
-    if (error?.code) {
-      switch (error.code) {
-        case 'auth/email-already-in-use':
-          return { code: error.code, message: 'Este correo electrónico ya está registrado' };
-        case 'auth/invalid-email':
-          return { code: error.code, message: 'Correo electrónico inválido' };
-        case 'auth/operation-not-allowed':
-          return { code: error.code, message: 'Operación no permitida' };
-        case 'auth/weak-password':
-          return { code: error.code, message: 'La contraseña es demasiado débil' };
-        case 'auth/user-disabled':
-          return { code: error.code, message: 'Usuario deshabilitado' };
-        case 'auth/user-not-found':
-          return { code: error.code, message: 'Usuario no encontrado' };
-        case 'auth/wrong-password':
-          return { code: error.code, message: 'Contraseña incorrecta' };
-        default:
-          return { code: error.code, message: 'Ocurrió un error durante la autenticación' };
-      }
+  async sendPasswordReset(email: string): Promise<void> {
+    try {
+      this.checkRateLimit(email);
+      await sendPasswordResetEmail(auth, email);
+    } catch (error) {
+      throw ErrorHandler.handle(error as AuthError);
     }
-    return { message: error?.message || 'Error desconocido' };
   }
 }
 

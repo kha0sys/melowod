@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { QueryConstraint } from 'firebase/firestore';
 import { getCachedDoc, getCachedCollection } from '@/lib/firebase/cache';
+import { withRetry } from '@/lib/utils/retry';
+import { ErrorHandler } from '@/lib/utils/error-handler';
 
 interface UseFirestoreOptions {
   expiresIn?: number;
   forceFetch?: boolean;
+  enableOptimisticUpdates?: boolean;
 }
 
 // Hook para documentos individuales
@@ -15,6 +18,7 @@ export function useFirestoreDoc<T>(
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [optimisticData, setOptimisticData] = useState<T | null>(null);
 
   useEffect(() => {
     if (!path) {
@@ -25,13 +29,16 @@ export function useFirestoreDoc<T>(
     const fetchData = async () => {
       try {
         setLoading(true);
-        const result = await getCachedDoc<T>(path, options);
+        const result = await withRetry(() => getCachedDoc<T>(path, options));
         setData(result);
+        setOptimisticData(result);
         setError(null);
       } catch (err) {
-        console.error('Error fetching document:', err);
-        setError(err instanceof Error ? err : new Error('Unknown error'));
+        const handledError = ErrorHandler.handle(err);
+        console.error('Error fetching document:', handledError);
+        setError(handledError);
         setData(null);
+        setOptimisticData(null);
       } finally {
         setLoading(false);
       }
@@ -40,7 +47,35 @@ export function useFirestoreDoc<T>(
     fetchData();
   }, [path, options.forceFetch]);
 
-  return { data, loading, error };
+  const updateOptimistically = useCallback(async (
+    updateFn: (current: T | null) => T,
+    callback: () => Promise<void>
+  ) => {
+    if (!options.enableOptimisticUpdates) {
+      await callback();
+      return;
+    }
+
+    const previousData = data;
+    const newData = updateFn(data);
+    
+    try {
+      setOptimisticData(newData);
+      await callback();
+      setData(newData);
+    } catch (err) {
+      setOptimisticData(previousData);
+      setData(previousData);
+      throw err;
+    }
+  }, [data, options.enableOptimisticUpdates]);
+
+  return { 
+    data: options.enableOptimisticUpdates ? optimisticData : data, 
+    loading, 
+    error,
+    updateOptimistically 
+  };
 }
 
 // Hook para colecciones
@@ -52,6 +87,7 @@ export function useFirestoreCollection<T>(
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [optimisticData, setOptimisticData] = useState<T[]>([]);
 
   useEffect(() => {
     if (!path) {
@@ -62,20 +98,53 @@ export function useFirestoreCollection<T>(
     const fetchData = async () => {
       try {
         setLoading(true);
-        const result = await getCachedCollection<T>(path, queryConstraints, options);
+        const result = await withRetry(() => 
+          getCachedCollection<T>(path, queryConstraints, options)
+        );
         setData(result);
+        setOptimisticData(result);
         setError(null);
       } catch (err) {
-        console.error('Error fetching collection:', err);
-        setError(err instanceof Error ? err : new Error('Unknown error'));
+        const handledError = ErrorHandler.handle(err);
+        console.error('Error fetching collection:', handledError);
+        setError(handledError);
         setData([]);
+        setOptimisticData([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [path, options.forceFetch, queryConstraints.length]);
+  }, [path, queryConstraints, options.forceFetch]);
 
-  return { data, loading, error };
+  const updateOptimistically = useCallback(async (
+    updateFn: (current: T[]) => T[],
+    callback: () => Promise<void>
+  ) => {
+    if (!options.enableOptimisticUpdates) {
+      await callback();
+      return;
+    }
+
+    const previousData = data;
+    const newData = updateFn(data);
+    
+    try {
+      setOptimisticData(newData);
+      await callback();
+      setData(newData);
+    } catch (err) {
+      setOptimisticData(previousData);
+      setData(previousData);
+      throw err;
+    }
+  }, [data, options.enableOptimisticUpdates]);
+
+  return { 
+    data: options.enableOptimisticUpdates ? optimisticData : data, 
+    loading, 
+    error,
+    updateOptimistically 
+  };
 }

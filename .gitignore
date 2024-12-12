@@ -1,0 +1,26 @@
+# Firebase credentials and secrets
+**/serviceAccountKey.json
+**/credentials/*.json
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Go specific
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db

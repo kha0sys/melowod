@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Funciones de ayuda
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Reglas para WODs
+    match /wods/{wodId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Reglas para resultados de WODs
+    match /wodResults/{resultId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    // Reglas para usuarios
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Reglas para estadísticas de usuarios
+    match /userStats/{userId} {
+      allow read: if true;
+      // Las estadísticas solo se actualizan mediante Cloud Functions
+      allow write: if false;
+    }
+  }
+}

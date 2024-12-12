@@ -1,79 +1,198 @@
 # MeloWOD
 
-Una aplicación para gestionar y seguir tus WODs (Workout of the Day).
+Una aplicación moderna y eficiente para gestionar y seguir tus WODs (Workout of the Day) usando Firebase. MeloWOD te ayuda a mantener un registro detallado de tus entrenamientos, seguir tu progreso y competir con otros atletas.
 
-## 📁 Estructura del Proyecto
+## ✨ Características Principales
 
-```typescript
-frontend/
-├── src/
-│   ├── app/              # Next.js App Router
-│   ├── components/       # Componentes React
-│   ├── hooks/           # Custom hooks
-│   │   ├── useAuth.ts           # Hook para autenticación
-│   │   ├── useFirestore.ts      # Hook para Firestore con caché
-│   │   └── useGamification.ts   # Hook para sistema de gamificación
-│   ├── lib/             # Utilidades y configuraciones
-│   │   ├── firebase/
-│   │   │   ├── config.ts        # Configuración unificada de Firebase
-│   │   │   └── cache.ts         # Sistema de caché para Firestore
-│   │   └── utils.ts             # Utilidades generales
-│   ├── services/        # Servicios de la aplicación
-│   │   ├── auth/               # Servicios de autenticación
-│   │   └── api/                # Servicios de API
-│   ├── types/           # Definiciones de tipos TypeScript
-│   └── schemas/         # Esquemas de validación
+- **Gestión de WODs**: Crea, edita y programa tus entrenamientos diarios
+- **Seguimiento de Progreso**: Registra tus tiempos, pesos y repeticiones
+- **Sistema de Gamificación**: Gana puntos y medallas por completar WODs
+- **Rankings y Competencia**: Compite con otros usuarios y sube en el ranking
+- **Estadísticas Detalladas**: Visualiza tu progreso con gráficos y métricas
+- **Modo Offline**: Continúa usando la app sin conexión a internet
+
+## 🎯 Para Quién es MeloWOD
+
+- Atletas de CrossFit y entrenamiento funcional
+- Entrenadores que quieren programar WODs para sus atletas
+- Boxes y gimnasios que buscan una plataforma de gestión
+- Cualquier persona interesada en seguir su progreso fitness
+
+## 📁 Estructura del Proyecto y Arquitectura
+
+```plaintext
+/
+├── frontend/           # Aplicación Next.js
+│   ├── src/
+│   │   ├── domain/          # Modelos y lógica de negocio
+│   │   ├── application/     # Casos de uso
+│   │   ├── infrastructure/  # Servicios externos
+│   │   ├── components/      # Componentes React
+│   │   │   ├── atoms/      # Componentes básicos
+│   │   │   ├── molecules/  # Combinaciones de átomos
+│   │   │   ├── organisms/  # Componentes complejos
+│   │   │   └── templates/  # Layouts y plantillas
+│   │   ├── hooks/          # Custom hooks
+│   │   ├── lib/            # Utilidades y configuraciones
+│   │   ├── services/       # Servicios de Firebase
+│   │   ├── types/          # Definiciones de tipos
+│   │   └── schemas/        # Esquemas de validación
+│   └── public/           # Archivos estáticos
 │
-backend/
-├── cmd/                 # Puntos de entrada
-├── internal/           # Código interno
-│   ├── core/           # Lógica de negocio
-│   ├── infrastructure/ # Implementaciones
-│   └── pkg/            # Paquetes compartidos
-└── pkg/               # Código compartido
+├── backend/           # API en Go
+│   ├── domain/           # Entidades y reglas de negocio
+│   ├── usecase/          # Casos de uso
+│   ├── interface/        # Controladores y presentadores
+│   └── infrastructure/   # Implementaciones concretas
+│
+├── functions/         # Cloud Functions
+│   ├── src/
+│   │   ├── auth/         # Funciones de autenticación
+│   │   ├── wods/         # Funciones de WODs
+│   │   └── gamification/ # Sistema de puntos
+│   └── lib/           # Código compartido
+│
+├── firebase.json     # Configuración de Firebase
+├── firestore.rules   # Reglas de seguridad
+└── storage.rules     # Reglas de almacenamiento
 ```
 
-## 🔄 Sistema de Caché
+## 🏗️ Arquitectura y Patrones de Diseño
 
-La aplicación implementa un sistema de caché eficiente para Firestore:
+### Clean Architecture
 
-### Funcionalidades del Caché
+La aplicación sigue los principios de Clean Architecture, separando las responsabilidades en capas:
 
-- Caché en memoria con tiempo de expiración configurable
-- Soporte para documentos individuales y colecciones
-- Invalidación selectiva o completa del caché
-- Persistencia offline usando IndexedDB
-- Hooks personalizados para fácil integración
+1. **Capa de Dominio**
+   - Entidades de negocio
+   - Reglas de negocio
+   - Interfaces de repositorios
 
-### Ejemplos de Uso
+2. **Capa de Aplicación**
+   - Casos de uso
+   - DTOs
+   - Interfaces de servicios
+
+3. **Capa de Infraestructura**
+   - Implementaciones de repositorios
+   - Servicios externos
+   - Configuraciones
+
+### Patrones de Diseño Implementados
+
+- **Repository Pattern**: Abstracción del acceso a datos
+- **Factory Pattern**: Creación de objetos complejos
+- **Strategy Pattern**: Comportamientos intercambiables
+- **Observer Pattern**: Manejo de eventos y estado
+- **Dependency Injection**: Inversión de control
+
+### Principios SOLID
+
+- **Single Responsibility**: Cada clase tiene una única responsabilidad
+- **Open/Closed**: Extensible sin modificar código existente
+- **Liskov Substitution**: Uso correcto de herencia
+- **Interface Segregation**: Interfaces específicas
+- **Dependency Inversion**: Dependencias hacia abstracciones
+
+## 🔥 Servicios de Firebase
+
+### 🔐 Authentication
+
+- Autenticación segura con email/password
+- Inicio de sesión con Google y otros proveedores sociales
+- Recuperación de contraseña y verificación de email
+- Perfiles de usuario personalizables
+
+### 📚 Firestore
+
+- Base de datos NoSQL escalable y en tiempo real
+- Reglas de seguridad granulares para proteger datos
+- Sistema de caché local para mejor rendimiento
+- Sincronización automática entre dispositivos
+
+### 🗄️ Storage
+
+- Almacenamiento seguro de archivos multimedia
+- Soporte para imágenes de perfil y videos de WODs
+- Límites configurables de tamaño y tipos de archivo
+- Limpieza automática de archivos no utilizados
+
+### ⚡ Cloud Functions
+
+- Cálculo automático de puntos y rankings en tiempo real
+- Sistema de notificaciones para nuevos WODs y logros
+- Generación de estadísticas y reportes personalizados
+- Tareas programadas de mantenimiento y optimización
+
+## 🔄 Sistema de Caché y Estado
+
+### Estado Global
+
+- **Redux/Context**: Gestión centralizada del estado
+- **Recoil**: Estado atómico para componentes
+- **React Query**: Caché y sincronización de datos
+
+### Caché de Datos
 
 ```typescript
-// Obtener un documento con caché
-const { data, loading, error } = useFirestoreDoc<Wod>(
-  'wods/today',
-  { expiresIn: 5 * 60 * 1000 } // 5 minutos
-);
-
-// Obtener una colección con caché
-const { data, loading, error } = useFirestoreCollection<User>(
-  'users',
-  [where('active', '==', true)],
-  { expiresIn: 10 * 60 * 1000 } // 10 minutos
+// Ejemplo de caché con React Query
+const { data, isLoading } = useQuery(['wods'], 
+  () => fetchWods(),
+  {
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    cacheTime: 30 * 60 * 1000 // 30 minutos
+  }
 );
 ```
 
-## 🔧 Configuración de Firebase
+## 🚀 Desarrollo Local
 
-La aplicación utiliza una configuración unificada de Firebase que incluye:
+1. Instalar dependencias:
 
-- Authentication
-- Firestore con persistencia offline
-- Cloud Storage
-- Analytics (solo en el cliente)
+```bash
+# Frontend
+cd frontend
+npm install
 
-### Detalles de Configuración
+# Cloud Functions
+cd functions
+npm install
+```
 
-- Configuración centralizada en `src/lib/firebase/config.ts`
-- Manejo automático de persistencia offline
-- Tipado completo para mejor DX
-- Integración con Next.js App Router
+1. Configurar variables de entorno:
+
+Crear archivo `frontend/.env.local` con las credenciales de Firebase.
+
+1. Iniciar emuladores de Firebase:
+
+```bash
+firebase emulators:start
+```
+
+1. Iniciar frontend en modo desarrollo:
+
+```bash
+cd frontend
+npm run dev
+```
+
+## 📱 Características de la PWA
+
+- Instalable como aplicación nativa
+- Funcionalidad offline completa
+- Sincronización en segundo plano
+- Notificaciones push
+- Actualizaciones automáticas
+
+## 🤝 Contribución
+
+¿Quieres contribuir al proyecto? ¡Genial! Por favor:
+
+1. Haz fork del repositorio
+2. Crea una rama para tu feature
+3. Haz commit de tus cambios
+4. Envía un pull request
+
+## 📝 Licencia
+
+Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.

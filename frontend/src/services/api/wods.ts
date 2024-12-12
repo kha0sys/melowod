@@ -1,42 +1,42 @@
 import { 
-  doc, 
-  getDoc, 
-  setDoc, 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
+  collection,
+  doc,
+  addDoc,
+  getDoc,
+  query,
+  where,
+  orderBy,
   limit,
   getDocs,
   Timestamp,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/config/firebase';
 import { Wod, WodResult } from '@/types/wod';
 
-export type DifficultyLevel = 'RX' | 'SCALED' | 'BEGINNER';
+export type DifficultyLevel = 'rx' | 'scaled' | 'beginner';
 
 export const wodService = {
   async createDailyWod(wodData: Wod, mediaFiles?: File[]): Promise<void> {
-    const wodId = doc(collection(db, 'wods')).id;
     const mediaUrls: string[] = [];
 
-    // Si hay archivos multimedia, subirlos a Storage
+    // Subir archivos multimedia a Storage
     if (mediaFiles && mediaFiles.length > 0) {
       for (const file of mediaFiles) {
-        const storageRef = ref(storage, `wods/${wodId}/${file.name}`);
+        const storageRef = ref(storage, `wods/${new Date().toISOString()}/${file.name}`);
         await uploadBytes(storageRef, file);
         const url = await getDownloadURL(storageRef);
         mediaUrls.push(url);
       }
     }
 
-    await setDoc(doc(db, 'wods', wodId), {
+    // Crear el WOD en Firestore
+    await addDoc(collection(db, 'wods'), {
       ...wodData,
-      id: wodId,
       mediaUrls,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     });
   },
 
@@ -44,10 +44,13 @@ export const wodService = {
     const searchDate = date ? new Date(date) : new Date();
     searchDate.setHours(0, 0, 0, 0);
 
+    const nextDay = new Date(searchDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+
     const q = query(
       collection(db, 'wods'),
       where('date', '>=', searchDate),
-      where('date', '<', new Date(searchDate.getTime() + 24 * 60 * 60 * 1000)),
+      where('date', '<', nextDay),
       limit(1)
     );
 
@@ -63,46 +66,28 @@ export const wodService = {
   },
 
   async submitWodResult(result: WodResult, mediaFiles?: File[]): Promise<void> {
-    const resultId = doc(collection(db, 'wodResults')).id;
     const mediaUrls: string[] = [];
 
-    // Si hay archivos multimedia (fotos o videos del resultado), subirlos a Storage
+    // Subir archivos multimedia a Storage
     if (mediaFiles && mediaFiles.length > 0) {
       for (const file of mediaFiles) {
-        const storageRef = ref(storage, `wodResults/${resultId}/${file.name}`);
+        const storageRef = ref(storage, `results/${result.userId}/${new Date().toISOString()}/${file.name}`);
         await uploadBytes(storageRef, file);
         const url = await getDownloadURL(storageRef);
         mediaUrls.push(url);
       }
     }
 
-    await setDoc(doc(db, 'wodResults', resultId), {
+    // Guardar el resultado en Firestore
+    await addDoc(collection(db, 'wodResults'), {
       ...result,
-      id: resultId,
       mediaUrls,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     });
-
-    // Actualizar las estadísticas del usuario
-    const userStatsRef = doc(db, 'userStats', result.userId);
-    const userStatsDoc = await getDoc(userStatsRef);
-    const currentStats = userStatsDoc.exists() ? userStatsDoc.data() : {
-      totalWods: 0,
-      completedWods: 0,
-      points: 0,
-    };
-
-    await setDoc(userStatsRef, {
-      ...currentStats,
-      totalWods: currentStats.totalWods + 1,
-      completedWods: currentStats.completedWods + 1,
-      points: currentStats.points + this.calculatePoints(result),
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
   },
 
-  async getLeaderboard(wodId: string, level: DifficultyLevel = 'RX'): Promise<WodResult[]> {
+  async getLeaderboard(wodId: string, level: DifficultyLevel = 'rx'): Promise<WodResult[]> {
     const q = query(
       collection(db, 'wodResults'),
       where('wodId', '==', wodId),
@@ -123,14 +108,14 @@ export const wodService = {
     // Este es un ejemplo simple
     let points = 10; // Puntos base por completar
 
-    switch (result.level) {
-      case 'RX':
+    switch (result.level.toLowerCase()) {
+      case 'rx':
         points *= 1.5;
         break;
-      case 'SCALED':
+      case 'scaled':
         points *= 1.2;
         break;
-      case 'BEGINNER':
+      case 'beginner':
         points *= 1.0;
         break;
     }

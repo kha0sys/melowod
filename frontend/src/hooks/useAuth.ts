@@ -1,14 +1,13 @@
+'use client';
+
 import { useState, useEffect } from 'react';
-import { User as FirebaseUser } from 'firebase/auth';
+import { User, AuthError } from '@/domain/entities/User';
 import { authService } from '@/services/auth/auth.service';
-import { AuthState, AuthError } from '@/types/auth';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '@/config/firebase';
 
 export interface AuthState {
-  user: {
-    id: string;
-    email: string;
-    emailVerified: boolean;
-  } | null;
+  user: User | null;
   loading: boolean;
   error: AuthError | null;
 }
@@ -23,52 +22,52 @@ export function useAuth(): AuthState & {
   });
 
   useEffect(() => {
-    const unsubscribe = authService.onAuthStateChanged(async (user: FirebaseUser | null) => {
-      if (user) {
-        // Get additional user data from Firestore
-        const userData = await authService.getUserData(user.uid);
-        setState(prev => ({
-          ...prev,
-          user: {
-            id: user.uid,
-            email: user.email || '',
-            emailVerified: user.emailVerified,
-            ...userData,
-          },
-          loading: false,
-          error: null,
-        }));
-      } else {
-        setState(prev => ({
-          ...prev,
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      try {
+        if (firebaseUser) {
+          const user = await authService.getCurrentUser();
+          setState({
+            user,
+            loading: false,
+            error: null,
+          });
+        } else {
+          setState({
+            user: null,
+            loading: false,
+            error: null,
+          });
+        }
+      } catch (error) {
+        setState({
           user: null,
           loading: false,
-          error: null,
-        }));
+          error: error instanceof Error ? { code: 'auth/error', message: error.message } : null,
+        });
       }
     });
 
     return () => unsubscribe();
   }, []);
 
-  const handleSignOut = async () => {
+  const signOut = async () => {
     try {
       await authService.signOut();
-      setState(prev => ({
-        ...prev,
+      setState({
         user: null,
+        loading: false,
         error: null,
-      }));
+      });
     } catch (error) {
       setState(prev => ({
         ...prev,
-        error: error as AuthError,
+        error: error instanceof Error ? { code: 'auth/error', message: error.message } : null,
       }));
     }
   };
 
   return {
     ...state,
-    signOut: handleSignOut,
+    signOut,
   };
 }

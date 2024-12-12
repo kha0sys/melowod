@@ -1,13 +1,14 @@
 import { 
-  doc, 
-  getDoc, 
-  setDoc, 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  query,
+  where,
+  orderBy,
   limit,
   getDocs,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { User, UserStats } from '@/types/user';
@@ -20,22 +21,34 @@ export const userService = {
 
     await setDoc(doc(db, 'users', userData.id), {
       ...userData,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    // Inicializar estadísticas del usuario
+    await setDoc(doc(db, 'userStats', userData.id), {
+      totalWods: 0,
+      completedWods: 0,
+      points: 0,
+      rxCount: 0,
+      scaledCount: 0,
+      beginnerCount: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     });
   },
 
   async getUser(userId: string): Promise<User | null> {
     const userDoc = await getDoc(doc(db, 'users', userId));
-    return userDoc.exists() ? userDoc.data() as User : null;
+    return userDoc.exists() ? { id: userDoc.id, ...userDoc.data() } as User : null;
   },
 
   async getUserStats(userId: string): Promise<UserStats | null> {
     const statsDoc = await getDoc(doc(db, 'userStats', userId));
-    return statsDoc.exists() ? statsDoc.data() as UserStats : null;
+    return statsDoc.exists() ? { id: statsDoc.id, ...statsDoc.data() } as UserStats : null;
   },
 
-  async getGlobalRanking(limit: number = 100): Promise<User[]> {
+  async getGlobalRanking(limit: number = 100): Promise<UserStats[]> {
     const q = query(
       collection(db, 'userStats'),
       orderBy('points', 'desc'),
@@ -43,45 +56,34 @@ export const userService = {
     );
 
     const querySnapshot = await getDocs(q);
-    const users: User[] = [];
-
-    for (const doc of querySnapshot.docs) {
-      const userDoc = await getDoc(doc.ref);
-      if (userDoc.exists()) {
-        users.push(userDoc.data() as User);
-      }
-    }
-
-    return users;
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as UserStats[];
   },
 
-  async getBoxRanking(boxName: string, limit: number = 100): Promise<User[]> {
+  async getBoxRanking(boxId: string, limit: number = 100): Promise<UserStats[]> {
     const q = query(
       collection(db, 'userStats'),
-      where('box', '==', boxName),
+      where('boxId', '==', boxId),
       orderBy('points', 'desc'),
       limit(limit)
     );
 
     const querySnapshot = await getDocs(q);
-    const users: User[] = [];
-
-    for (const doc of querySnapshot.docs) {
-      const userDoc = await getDoc(doc.ref);
-      if (userDoc.exists()) {
-        users.push(userDoc.data() as User);
-      }
-    }
-
-    return users;
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as UserStats[];
   },
 
   async updateUser(userId: string, userData: Partial<User>): Promise<void> {
-    await setDoc(doc(db, 'users', userId), 
+    await setDoc(
+      doc(db, 'users', userId),
       {
         ...userData,
-        updatedAt: new Date().toISOString(),
-      }, 
+        updatedAt: serverTimestamp(),
+      },
       { merge: true }
     );
   },

@@ -6,6 +6,15 @@ import { useGamification } from '@/hooks/useGamification';
 import { LevelProgress } from '@/components/ui/LevelProgress';
 import { AchievementCard } from '@/components/ui/AchievementCard';
 import { useReward } from 'react-rewards';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+
+interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  unlockedAt: string;
+}
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState('stats');
@@ -83,73 +92,55 @@ export default function ProfilePage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b mb-8">
-        <div className="flex space-x-8">
-          <button
-            onClick={() => setActiveTab('stats')}
-            className={`pb-4 font-medium ${
-              activeTab === 'stats'
-                ? 'border-b-2 border-primary text-primary'
-                : 'text-gray-500'
-            }`}
-          >
+      <Tabs defaultValue="stats">
+        <TabsList className="border-b w-full justify-start">
+          <TabsTrigger value="stats" className="border-b-2 border-transparent data-[state=active]:border-primary">
             Estadísticas
-          </button>
-          <button
-            onClick={() => setActiveTab('achievements')}
-            className={`pb-4 font-medium ${
-              activeTab === 'achievements'
-                ? 'border-b-2 border-primary text-primary'
-                : 'text-gray-500'
-            }`}
-          >
+          </TabsTrigger>
+          <TabsTrigger value="achievements" className="border-b-2 border-transparent data-[state=active]:border-primary">
             Logros
-          </button>
-        </div>
-      </div>
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Contenido de las Tabs */}
-      {activeTab === 'stats' ? (
-        <div className="space-y-8">
+        <TabsContent value="stats" className="space-y-8">
           <div>
             <h2 className="text-xl font-bold mb-4">WODs Recientes</h2>
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-secondary">
-                    <th className="p-4 text-left">Fecha</th>
-                    <th className="p-4 text-left">WOD</th>
-                    <th className="p-4 text-left">Tiempo</th>
-                    <th className="p-4 text-left">Ranking</th>
+              <table className="w-full" role="table">
+                <thead role="rowgroup">
+                  <tr className="bg-secondary" role="row">
+                    <th className="p-4 text-left" role="columnheader" scope="col">Fecha</th>
+                    <th className="p-4 text-left" role="columnheader" scope="col">WOD</th>
+                    <th className="p-4 text-left" role="columnheader" scope="col">Tiempo</th>
+                    <th className="p-4 text-left" role="columnheader" scope="col">Ranking</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody role="rowgroup">
                   {recentWods.map((wod, index) => (
-                    <tr key={index} className="border-b">
-                      <td className="p-4">{wod.date}</td>
-                      <td className="p-4">{wod.name}</td>
-                      <td className="p-4 font-mono">{wod.time}</td>
-                      <td className="p-4">#{wod.rank}</td>
+                    <tr key={index} className="border-b" role="row">
+                      <td className="p-4" role="cell">{wod.date}</td>
+                      <td className="p-4" role="cell">{wod.name}</td>
+                      <td className="p-4 font-mono" role="cell">{wod.time}</td>
+                      <td className="p-4" role="cell">#{wod.rank}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {achievements.map((achievement) => (
-            <AchievementCard
-              key={achievement.id}
-              title={achievement.title}
-              description={achievement.description}
-              icon={achievement.icon}
-              unlockedAt={achievement.unlockedAt}
-            />
-          ))}
-        </div>
-      )}
+        </TabsContent>
+
+        <TabsContent value="achievements">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {achievements.map((achievement: Achievement) => (
+              <AchievementCard
+                key={achievement.id}
+                {...achievement}
+              />
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
