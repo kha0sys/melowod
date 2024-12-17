@@ -13,7 +13,7 @@ interface Achievement {
   title: string;
   description: string;
   icon: string;
-  unlockedAt: string;
+  unlockedAt: Date | null;
 }
 
 export default function ProfilePage() {
@@ -103,25 +103,39 @@ export default function ProfilePage() {
         </TabsList>
 
         <TabsContent value="stats" className="space-y-8">
-          <div>
-            <h2 className="text-xl font-bold mb-4">WODs Recientes</h2>
+          <div className="mt-8">
+            <h3 className="text-xl font-semibold mb-4">Historial de WODs</h3>
             <div className="overflow-x-auto">
-              <table className="w-full" role="table">
-                <thead role="rowgroup">
+              <table className="min-w-full" role="table">
+                <thead>
                   <tr className="bg-secondary" role="row">
-                    <th className="p-4 text-left" role="columnheader" scope="col">Fecha</th>
-                    <th className="p-4 text-left" role="columnheader" scope="col">WOD</th>
-                    <th className="p-4 text-left" role="columnheader" scope="col">Tiempo</th>
-                    <th className="p-4 text-left" role="columnheader" scope="col">Ranking</th>
+                    <th scope="col" className="px-6 py-3 text-left text-sm font-semibold">
+                      Fecha
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-sm font-semibold">
+                      WOD
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-sm font-semibold">
+                      Resultado
+                    </th>
                   </tr>
                 </thead>
                 <tbody role="rowgroup">
                   {recentWods.map((wod, index) => (
-                    <tr key={index} className="border-b" role="row">
-                      <td className="p-4" role="cell">{wod.date}</td>
-                      <td className="p-4" role="cell">{wod.name}</td>
-                      <td className="p-4 font-mono" role="cell">{wod.time}</td>
-                      <td className="p-4" role="cell">#{wod.rank}</td>
+                    <tr 
+                      key={wod.date || index} 
+                      className="border-b hover:bg-gray-50 transition-colors"
+                      role="row"
+                    >
+                      <td className="px-6 py-4 text-sm">
+                        {wod.date}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="font-medium">{wod.name}</span>
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {wod.time}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -132,10 +146,13 @@ export default function ProfilePage() {
 
         <TabsContent value="achievements">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {achievements.map((achievement: Achievement) => (
+            {achievements.map((achievement) => (
               <AchievementCard
                 key={achievement.id}
-                {...achievement}
+                title={achievement.title}
+                description={achievement.description}
+                icon={achievement.icon}
+                unlockedAt={achievement.unlockedAt || undefined}
               />
             ))}
           </div>

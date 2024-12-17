@@ -40,16 +40,16 @@ export default function LeaderboardPage() {
       <h1 className="text-3xl font-bold mb-8">Leaderboard</h1>
 
       {/* Filtros */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div role="search" aria-label="Filtros de leaderboard" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="space-y-2">
-          <label htmlFor="gender-filter" className="text-sm font-medium">Género</label>
+          <label id="gender-label" htmlFor="gender-filter" className="text-sm font-medium">Género</label>
           <select
             id="gender-filter"
             name="gender"
+            aria-labelledby="gender-label"
             className="w-full p-2 border rounded-md bg-background"
             value={filters.gender}
             onChange={(e) => setFilters({ ...filters, gender: e.target.value })}
-            aria-label="Filtrar por género"
           >
             <option value="all">Todos</option>
             <option value="male">Masculino</option>
@@ -58,14 +58,14 @@ export default function LeaderboardPage() {
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="location-filter" className="text-sm font-medium">Ubicación</label>
+          <label id="location-label" htmlFor="location-filter" className="text-sm font-medium">Ubicación</label>
           <select
             id="location-filter"
             name="location"
+            aria-labelledby="location-label"
             className="w-full p-2 border rounded-md bg-background"
             value={filters.location}
             onChange={(e) => setFilters({ ...filters, location: e.target.value })}
-            aria-label="Filtrar por ubicación"
           >
             <option value="all">Todas</option>
             <option value="bogota">Bogotá</option>
@@ -74,14 +74,14 @@ export default function LeaderboardPage() {
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="box-filter" className="text-sm font-medium">Box/Gimnasio</label>
+          <label id="box-label" htmlFor="box-filter" className="text-sm font-medium">Box/Gimnasio</label>
           <select
             id="box-filter"
             name="box"
+            aria-labelledby="box-label"
             className="w-full p-2 border rounded-md bg-background"
             value={filters.box}
             onChange={(e) => setFilters({ ...filters, box: e.target.value })}
-            aria-label="Filtrar por box o gimnasio"
           >
             <option value="all">Todos</option>
             <option value="box1">CrossFit Bogotá</option>
@@ -90,14 +90,14 @@ export default function LeaderboardPage() {
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="level-filter" className="text-sm font-medium">Nivel</label>
+          <label id="level-label" htmlFor="level-filter" className="text-sm font-medium">Nivel</label>
           <select
             id="level-filter"
             name="level"
+            aria-labelledby="level-label"
             className="w-full p-2 border rounded-md bg-background"
             value={filters.level}
             onChange={(e) => setFilters({ ...filters, level: e.target.value })}
-            aria-label="Filtrar por nivel"
           >
             <option value="all">Todos</option>
             <option value="rx">RX</option>
@@ -110,32 +110,28 @@ export default function LeaderboardPage() {
 
       {/* Tabla de resultados */}
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse" role="table">
-          <thead role="rowgroup">
-            <tr className="bg-secondary" role="row">
-              <th className="p-4 text-left" role="columnheader" scope="col">#</th>
-              <th className="p-4 text-left" role="columnheader" scope="col">Nombre</th>
-              <th className="p-4 text-left" role="columnheader" scope="col">Tiempo</th>
-              <th className="p-4 text-left" role="columnheader" scope="col">Nivel</th>
-              <th className="p-4 text-left" role="columnheader" scope="col">Género</th>
-              <th className="p-4 text-left" role="columnheader" scope="col">Ubicación</th>
-              <th className="p-4 text-left" role="columnheader" scope="col">Box</th>
+        <table className="w-full" role="table" aria-label="Resultados del leaderboard">
+          <thead>
+            <tr>
+              <th scope="col" className="px-4 py-2 text-left">Posición</th>
+              <th scope="col" className="px-4 py-2 text-left">Nombre</th>
+              <th scope="col" className="px-4 py-2 text-left">Tiempo</th>
+              <th scope="col" className="px-4 py-2 text-left">Nivel</th>
+              <th scope="col" className="px-4 py-2 text-left">Género</th>
+              <th scope="col" className="px-4 py-2 text-left">Ubicación</th>
+              <th scope="col" className="px-4 py-2 text-left">Box</th>
             </tr>
           </thead>
-          <tbody role="rowgroup">
+          <tbody>
             {results.map((result, index) => (
-              <tr
-                key={index}
-                className="border-b hover:bg-secondary/50 transition-colors"
-                role="row"
-              >
-                <td className="p-4" role="cell">{result.rank}</td>
-                <td className="p-4" role="cell">{result.name}</td>
-                <td className="p-4 font-mono" role="cell">{result.time}</td>
-                <td className="p-4" role="cell">{result.level}</td>
-                <td className="p-4" role="cell">{result.gender}</td>
-                <td className="p-4" role="cell">{result.location}</td>
-                <td className="p-4" role="cell">{result.box}</td>
+              <tr key={index}>
+                <td className="px-4 py-2">{result.rank}</td>
+                <td className="px-4 py-2">{result.name}</td>
+                <td className="px-4 py-2">{result.time}</td>
+                <td className="px-4 py-2">{result.level}</td>
+                <td className="px-4 py-2">{result.gender}</td>
+                <td className="px-4 py-2">{result.location}</td>
+                <td className="px-4 py-2">{result.box}</td>
               </tr>
             ))}
           </tbody>

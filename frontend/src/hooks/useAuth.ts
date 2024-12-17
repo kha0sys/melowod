@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { User, AuthError } from '@/domain/entities/User';
-import { authService } from '@/services/auth/auth.service';
+import { authService } from '@/infrastructure/firebase/auth/auth.service';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/config/firebase';
+import { auth } from '@/infrastructure/firebase/config';
 
 export interface AuthState {
   user: User | null;
@@ -22,6 +22,15 @@ export function useAuth(): AuthState & {
   });
 
   useEffect(() => {
+    if (!auth) {
+      setState({
+        user: null,
+        loading: false,
+        error: { code: 'auth/not-initialized', message: 'Firebase Auth is not initialized' }
+      });
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
@@ -51,19 +60,10 @@ export function useAuth(): AuthState & {
   }, []);
 
   const signOut = async () => {
-    try {
-      await authService.signOut();
-      setState({
-        user: null,
-        loading: false,
-        error: null,
-      });
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        error: error instanceof Error ? { code: 'auth/error', message: error.message } : null,
-      }));
+    if (!auth) {
+      throw new Error('Firebase Auth is not initialized');
     }
+    await auth.signOut();
   };
 
   return {

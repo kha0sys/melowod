@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
-import { auth, db } from '@/config/firebase';
+import { getFirebaseAuth, getFirebaseDb } from '@/config/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+
+const auth = getFirebaseAuth();
+const db = getFirebaseDb();
 
 export function FirebaseConnectionTest() {
   const [status, setStatus] = useState<string>('Checking connection...');

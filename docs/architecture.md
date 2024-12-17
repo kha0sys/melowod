@@ -2,84 +2,57 @@
 
 ## Visión General
 
-MeloWOD sigue una arquitectura limpia y modular, separando claramente las responsabilidades entre frontend, backend y funciones en la nube.
-
-## Estructura de Capas
-
-### Frontend (Next.js)
+MeloWOD sigue una arquitectura limpia (Clean Architecture) con una clara separación de responsabilidades:
 
 ```plaintext
-frontend/
-├── domain/          # Modelos y lógica de negocio
-├── application/     # Casos de uso
-└── infrastructure/  # Implementaciones externas
+/
+├── frontend/           # Aplicación Next.js
+│   └── src/
+│       ├── domain/          # Modelos y lógica de negocio
+│       ├── application/     # Casos de uso
+│       ├── infrastructure/  # Servicios externos
+│       └── components/      # Componentes React
+├── functions/          # Firebase Cloud Functions
+│   └── src/
+│       ├── domain/         # Entidades y reglas de negocio
+│       │   └── entities/   # Definiciones de tipos
+│       ├── application/    # Lógica de aplicación
+│       │   └── wod/        # Servicios relacionados con WODs
+│       └── infrastructure/ # Implementaciones concretas
 ```
 
-#### Domain Layer
+## Servicios Principales
 
-* Contiene las entidades principales (User, WOD, Score)
-* Define interfaces de repositorios
-* Implementa reglas de negocio core
+### WodService
 
-#### Application Layer
+Maneja toda la lógica relacionada con los entrenamientos (WODs):
 
-* Implementa casos de uso específicos
-* Maneja la lógica de la aplicación
-* Coordina entre domain e infrastructure
+- Creación y gestión de WODs
+- Registro de resultados
+- Actualización de estadísticas de usuario
+- Gestión de rankings y puntuaciones
 
-#### Infrastructure Layer
+#### Flujo de Datos
 
-* Implementa interfaces del dominio
-* Maneja la comunicación con Firebase
-* Gestiona el estado de la aplicación
-
-### Backend (Go)
-
-```plaintext
-backend/
-├── domain/          # Entidades y reglas
-├── usecase/         # Lógica de aplicación
-└── interface/       # APIs y controladores
-```
-
-### Cloud Functions
-
-```plaintext
-functions/
-├── auth/           # Autenticación
-├── wods/           # Lógica de WODs
-└── gamification/   # Sistema de puntos
-```
+1. El usuario completa un WOD
+2. Se registra el resultado en Firestore
+3. El trigger `onWodResultCreated` se activa
+4. Se actualizan las estadísticas del usuario
+5. Se recalculan los rankings si es necesario
 
 ## Patrones de Diseño
 
-### Repository Pattern
+### Domain-Driven Design (DDD)
 
-```typescript
-interface WodRepository {
-  getById(id: string): Promise<Wod>;
-  save(wod: Wod): Promise<void>;
-  delete(id: string): Promise<void>;
-  list(filters: WodFilters): Promise<Wod[]>;
-}
-```
+- Entidades claramente definidas (Wod, WodResult)
+- Servicios de dominio para lógica de negocio
+- Value Objects para conceptos inmutables
 
-### Factory Pattern
+### Event-Driven Architecture
 
-```typescript
-class WodFactory {
-  static create(type: WodType, data: WodData): Wod {
-    switch (type) {
-      case WodType.AMRAP:
-        return new AmrapWod(data);
-      case WodType.ForTime:
-        return new ForTimeWod(data);
-      default:
-        throw new Error('Invalid WOD type');
-    }
-  }
-}
-```
+- Uso de Firestore triggers para reaccionar a cambios
+- Actualizaciones asíncronas de estadísticas
+- Notificaciones en tiempo real
 
 ## Flujos de Datos
 

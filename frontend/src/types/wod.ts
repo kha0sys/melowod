@@ -1,23 +1,48 @@
-export interface Wod {
-  id: string;
-  date: string;
+import { FirebaseDocument } from './firebase';
+
+export type WodLevel = 'rx' | 'advanced' | 'intermediate' | 'beginner';
+export type WodType = 'for_time' | 'amrap';
+
+export interface Wod extends FirebaseDocument {
+  title?: string;
+  description?: string;
+  date: Date;
   rx: string;
   advanced: string;
   intermediate: string;
   beginner: string;
-  type: 'for_time' | 'amrap';
+  type: WodType;
   timeLimit?: number;
-  createdAt: string;
-  updatedAt: string;
+  points?: number;
 }
 
-export interface WodResult {
-  id: string;
+export interface WodResult extends FirebaseDocument {
   wodId: string;
   userId: string;
-  level: 'rx' | 'advanced' | 'intermediate' | 'beginner';
+  level: WodLevel;
   time?: number;
   rounds?: number;
   notes?: string;
-  createdAt: string;
+  points?: number;
+}
+
+export interface CreateWodRequest {
+  title?: string;
+  description?: string;
+  date: Date;
+  rx: string;
+  advanced: string;
+  intermediate: string;
+  beginner: string;
+  type: WodType;
+  timeLimit?: number;
+  points?: number;
+}
+
+export interface SubmitWodResultRequest {
+  wodId: string;
+  level: WodLevel;
+  time?: number;
+  rounds?: number;
+  notes?: string;
 }

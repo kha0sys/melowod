@@ -1,142 +1,76 @@
-import { 
-  auth,
-  db,
-  storage
-} from '@/config/firebase';
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  updateProfile,
-  sendEmailVerification,
-  User as FirebaseUser
-} from 'firebase/auth';
-import {
-  collection,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  getDocs,
-  serverTimestamp
-} from 'firebase/firestore';
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject
-} from 'firebase/storage';
-import { IFirebaseRepository, QueryConfig } from '@/domain/repositories/IFirebaseRepository';
-import { 
-  User, 
-  SignUpRequest, 
-  SignInRequest, 
-  UpdateProfileRequest, 
-  UserRole 
-} from '@/domain/entities/User';
+import { IFirebaseRepository } from '@/domain/repositories/IFirebaseRepository';
+import { SignInRequest, SignUpRequest, User } from '@/domain/entities/User';
+import { QueryConfig } from '@/domain/entities/QueryConfig';
+import { DocumentData } from 'firebase/firestore';
+import { AuthService } from '@/infrastructure/firebase/auth/auth.service';
+import { FirestoreService } from '@/infrastructure/firebase/firestore/firestore.service';
+import { StorageService } from '@/infrastructure/firebase/storage/storage.service';
 
 export class FirebaseRepository implements IFirebaseRepository {
+  constructor(
+    private readonly authService: AuthService,
+    private readonly firestoreService: FirestoreService,
+    private readonly storageService: StorageService
+  ) {}
+
   // Auth Methods
-  async signUp({ email, password, firstName, lastName }: SignUpRequest): Promise<void> {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const { user } = userCredential;
-
-    // Create user profile in Firestore
-    await this.create<User>('users', {
-      id: user.uid,
-      email,
-      firstName,
-      lastName,
-      role: UserRole.USER,
-      isEmailVerified: false,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }, user.uid);
-
-    // Update Firebase Auth Profile
-    await updateProfile(user, {
-      displayName: `${firstName} ${lastName}`
-    });
-
-    await sendEmailVerification(user);
+  async signUp(request: SignUpRequest): Promise<void> {
+    return this.authService.signUpWithEmail(
+      request.email,
+      request.password,
+      request.firstName,
+      request.lastName,
+      request.phoneNumber,
+      request.category,
+      request.city,
+      request.country,
+      request.gender
+    );
   }
 
-  async signIn({ email, password }: SignInRequest): Promise<void> {
-    await signInWithEmailAndPassword(auth, email, password);
+  async signIn(request: SignInRequest): Promise<void> {
+    return this.authService.signInWithEmail(request.email, request.password);
   }
 
   async signOut(): Promise<void> {
-    await firebaseSignOut(auth);
+    return this.authService.signOut();
   }
 
   async getCurrentUser(): Promise<User | null> {
-    const firebaseUser = auth.currentUser;
-    if (!firebaseUser) return null;
-
-    const userDoc = await this.getById<User>('users', firebaseUser.uid);
-    return userDoc;
+    return this.authService.getCurrentUser();
   }
 
   // Firestore Methods
-  async create<T>(collection: string, data: T, id?: string): Promise<string> {
-    const collectionRef = collection(db, collection);
-    const docRef = id ? doc(collectionRef, id) : doc(collectionRef);
-    await setDoc(docRef, {
-      ...data,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-    return docRef.id;
+  async create<T extends DocumentData>(collection: string, data: T, id?: string): Promise<string> {
+    return this.firestoreService.create(collection, data, id);
   }
 
-  async update<T>(collection: string, id: string, data: Partial<T>): Promise<void> {
-    const docRef = doc(db, collection, id);
-    await updateDoc(docRef, {
-      ...data,
-      updatedAt: serverTimestamp()
-    });
+  async update<T extends DocumentData>(collection: string, id: string, data: Partial<T>): Promise<void> {
+    return this.firestoreService.update(collection, id, data);
   }
 
   async delete(collection: string, id: string): Promise<void> {
-    const docRef = doc(db, collection, id);
-    await deleteDoc(docRef);
+    return this.firestoreService.delete(collection, id);
   }
 
   async getById<T>(collection: string, id: string): Promise<T | null> {
-    const docRef = doc(db, collection, id);
-    const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? (docSnap.data() as T) : null;
+    return this.firestoreService.getById(collection, id);
   }
 
   async query<T>(collection: string, queries: QueryConfig[]): Promise<T[]> {
-    const collectionRef = collection(db, collection);
-    let q = query(collectionRef);
-
-    queries.forEach(({ field, operator, value }) => {
-      q = query(q, where(field, operator, value));
-    });
-
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as T);
+    return this.firestoreService.query(collection, queries);
   }
 
   // Storage Methods
   async uploadFile(path: string, file: File): Promise<string> {
-    const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, file);
-    return await getDownloadURL(storageRef);
+    return this.storageService.uploadFile(path, file);
   }
 
   async deleteFile(path: string): Promise<void> {
-    const storageRef = ref(storage, path);
-    await deleteObject(storageRef);
+    return this.storageService.deleteFile(path);
   }
 
   async getFileUrl(path: string): Promise<string> {
-    const storageRef = ref(storage, path);
-    return await getDownloadURL(storageRef);
+    return this.storageService.getDownloadUrl(path);
   }
 }

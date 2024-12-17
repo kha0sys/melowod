@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { authService } from '@/services/auth/auth.service';
+import { authService } from '@/infrastructure/firebase/auth/auth.service';
 
 export default function VerifyEmailPage() {
   const router = useRouter();

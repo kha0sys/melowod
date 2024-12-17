@@ -1,4 +1,5 @@
 import { SignInRequest, SignUpRequest, UpdateProfileRequest, User } from '../entities/User';
+import { DocumentData } from 'firebase/firestore';
 
 export interface IFirebaseRepository {
   // Auth Repository
@@ -8,11 +9,11 @@ export interface IFirebaseRepository {
   getCurrentUser(): Promise<User | null>;
   
   // Firestore Repository
-  create<T>(collection: string, data: T, id?: string): Promise<string>;
-  update<T>(collection: string, id: string, data: Partial<T>): Promise<void>;
+  create<T extends DocumentData>(collection: string, data: T, id?: string): Promise<string>;
+  update<T extends DocumentData>(collection: string, id: string, data: Partial<T>): Promise<void>;
   delete(collection: string, id: string): Promise<void>;
-  getById<T>(collection: string, id: string): Promise<T | null>;
-  query<T>(collection: string, queries: QueryConfig[]): Promise<T[]>;
+  getById<T extends DocumentData>(collection: string, id: string): Promise<T | null>;
+  query<T extends DocumentData>(collection: string, queries: QueryConfig[]): Promise<T[]>;
   
   // Storage Repository
   uploadFile(path: string, file: File): Promise<string>;

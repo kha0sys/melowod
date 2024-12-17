@@ -1,47 +1,88 @@
-'use client';
+import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
+import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
+import { env } from './env';
 
-import { getApps, initializeApp, FirebaseApp } from "firebase/app";
-import { Analytics, getAnalytics } from "firebase/analytics";
-import { Auth, getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { FirebaseStorage, getStorage } from "firebase/storage";
+const REQUIRED_CONFIG_KEYS = [
+  'apiKey',
+  'authDomain',
+  'projectId',
+  'storageBucket',
+  'messagingSenderId',
+  'appId'
+] as const;
+
+function validateConfig(config: Record<string, string | undefined>): boolean {
+  return REQUIRED_CONFIG_KEYS.every(key => {
+    const value = config[key];
+    if (!value) {
+      console.error(`Missing required Firebase config: ${key}`);
+      return false;
+    }
+    return true;
+  });
+}
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+  apiKey: env.firebase.apiKey,
+  authDomain: env.firebase.authDomain,
+  projectId: env.firebase.projectId,
+  storageBucket: env.firebase.storageBucket,
+  messagingSenderId: env.firebase.messagingSenderId,
+  appId: env.firebase.appId,
+  measurementId: env.firebase.measurementId
 };
 
-// Initialize Firebase only once
-let app: FirebaseApp;
-let analytics: Analytics | null = null;
-let auth: Auth;
-let db: any;
-let storage: FirebaseStorage;
+class FirebaseService {
+  private static instance: FirebaseService;
+  private app: FirebaseApp;
+  private auth: Auth;
+  private db: Firestore;
+  private storage: FirebaseStorage;
 
-// Check if Firebase is already initialized
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApps()[0];
+  private constructor() {
+    if (!validateConfig(firebaseConfig)) {
+      throw new Error('Invalid Firebase configuration. Check your environment variables.');
+    }
+
+    try {
+      this.app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+      this.auth = getAuth(this.app);
+      this.db = getFirestore(this.app);
+      this.storage = getStorage(this.app);
+    } catch (error) {
+      console.error('Error initializing Firebase:', error);
+      throw new Error('Failed to initialize Firebase services');
+    }
+  }
+
+  public static getInstance(): FirebaseService {
+    if (!FirebaseService.instance) {
+      FirebaseService.instance = new FirebaseService();
+    }
+    return FirebaseService.instance;
+  }
+
+  public getApp(): FirebaseApp {
+    return this.app;
+  }
+
+  public getAuth(): Auth {
+    return this.auth;
+  }
+
+  public getDb(): Firestore {
+    return this.db;
+  }
+
+  public getStorage(): FirebaseStorage {
+    return this.storage;
+  }
 }
 
-// Initialize services
-if (typeof window !== 'undefined') {
-  // Client-side initialization
-  analytics = getAnalytics(app);
-  auth = getAuth(app);
-  db = getFirestore(app);
-  storage = getStorage(app);
-} else {
-  // Server-side initialization
-  auth = getAuth(app);
-  db = getFirestore(app);
-  storage = getStorage(app);
-}
-
-export { app, analytics, auth, db, storage };
+// Export singleton instance getters
+export const getFirebaseApp = () => FirebaseService.getInstance().getApp();
+export const getFirebaseAuth = () => FirebaseService.getInstance().getAuth();
+export const getFirebaseDb = () => FirebaseService.getInstance().getDb();
+export const getFirebaseStorage = () => FirebaseService.getInstance().getStorage();

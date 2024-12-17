@@ -3,18 +3,23 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  photoURL?: string;
-  phoneNumber?: string;
+  phoneNumber: string;
+  category: string;
+  city: string;
+  country: string;
+  gender: string;
+  emailVerified: boolean;
+  role: UserRole;
   createdAt: Date;
   updatedAt: Date;
-  role: UserRole;
+  points: number;
+  achievements: string[];
   isEmailVerified: boolean;
-  lastLoginAt?: Date;
 }
 
 export enum UserRole {
-  ADMIN = 'ADMIN',
   USER = 'USER',
+  ADMIN = 'ADMIN',
   COACH = 'COACH'
 }
 
@@ -30,6 +35,11 @@ export interface SignUpRequest {
   password: string;
   firstName: string;
   lastName: string;
+  phoneNumber: string;
+  category: string;
+  city: string;
+  country: string;
+  gender: string;
 }
 
 export interface SignInRequest {

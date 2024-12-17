@@ -75,6 +75,33 @@ interface CreateWodRequest {
 }
 ```
 
+#### POST /api/wod/create
+Create a new WOD.
+
+```typescript
+interface CreateWodRequest {
+  title: string;
+  description: string;
+  type: 'amrap' | 'fortime' | 'emom';
+  duration: number;
+  movements: string[];
+}
+```
+
+#### POST /api/wod/result
+Submit a WOD result.
+
+```typescript
+interface WodResult {
+  userId: string;
+  wodId: string;
+  score: number;
+  level: 'rx' | 'scaled' | 'beginner';
+  mediaUrls?: string[];
+  notes?: string;
+}
+```
+
 ## Firebase Collections
 
 ### Users Collection
@@ -161,3 +188,9 @@ Sends push notifications to users.
 - Handles different notification types
 - Manages notification preferences
 - Tracks delivery status
+
+## Firestore Triggers
+
+The following Firestore triggers are implemented:
+
+- `onWodResultCreated`: Automatically updates user statistics when a new WOD result is submitted

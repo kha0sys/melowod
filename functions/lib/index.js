@@ -23,132 +23,105 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cleanupOldFiles = exports.calculateDailyRankings = exports.onWodResultCreated = void 0;
+exports.onWodResultCreated = exports.onUserCreated = exports.getWodCompletion = exports.getLeaderboard = exports.getUserResults = exports.getWodResults = exports.submitWodResult = exports.listWods = exports.getWod = exports.deleteWod = exports.updateWod = exports.createWod = exports.getBoxAnalytics = exports.getUserAnalytics = exports.updateUserProfile = exports.updateUserPreferences = exports.getUser = exports.updateUser = exports.createUser = void 0;
 const functions = __importStar(require("firebase-functions"));
-const admin = __importStar(require("firebase-admin"));
-admin.initializeApp();
-const db = admin.firestore();
-// Función para calcular puntos
-function calculatePoints(result) {
-    let points = 10; // Puntos base
-    switch (result.level) {
-        case 'rx':
-            points *= 1.5;
-            break;
-        case 'scaled':
-            points *= 1.2;
-            break;
-        case 'beginner':
-            points *= 1.0;
-            break;
+const WodService_1 = require("./application/wod/WodService");
+const UserService_1 = require("./application/user/UserService");
+// User Management Functions
+exports.createUser = functions.https.onCall(async (data) => {
+    return UserService_1.userService.createUser(data);
+});
+exports.updateUser = functions.https.onCall(async (data) => {
+    return UserService_1.userService.updateUser(data.id, data.user);
+});
+exports.getUser = functions.https.onCall(async (data) => {
+    return UserService_1.userService.getUser(data.id);
+});
+exports.updateUserPreferences = functions.https.onCall(async (data) => {
+    return UserService_1.userService.updatePreferences(data.id, data.preferences);
+});
+exports.updateUserProfile = functions.https.onCall(async (data) => {
+    return UserService_1.userService.updateProfile(data.id, data.profile);
+});
+exports.getUserAnalytics = functions.https.onCall(async (data) => {
+    return UserService_1.userService.getUserAnalytics(data.id);
+});
+exports.getBoxAnalytics = functions.https.onCall(async (data) => {
+    return UserService_1.userService.getBoxAnalytics(data.boxName);
+});
+// WOD Management Functions
+exports.createWod = functions.https.onCall(async (data) => {
+    return WodService_1.wodService.createWod(data);
+});
+exports.updateWod = functions.https.onCall(async (data) => {
+    return WodService_1.wodService.updateWod(data.id, data.wod);
+});
+exports.deleteWod = functions.https.onCall(async (data) => {
+    return WodService_1.wodService.deleteWod(data.id);
+});
+exports.getWod = functions.https.onCall(async (data) => {
+    return WodService_1.wodService.getWod(data.id);
+});
+exports.listWods = functions.https.onCall(async (data) => {
+    return WodService_1.wodService.listWods(data.filters);
+});
+// WOD Result Functions
+exports.submitWodResult = functions.https.onCall(async (data) => {
+    return WodService_1.wodService.submitResult(data);
+});
+exports.getWodResults = functions.https.onCall(async (data) => {
+    return WodService_1.wodService.getWodResults(data.wodId);
+});
+exports.getUserResults = functions.https.onCall(async (data) => {
+    return WodService_1.wodService.getUserResults(data.userId);
+});
+exports.getLeaderboard = functions.https.onCall(async (data) => {
+    return WodService_1.wodService.getLeaderboard(data.wodId, data.limit);
+});
+exports.getWodCompletion = functions.https.onCall(async (data) => {
+    return WodService_1.wodService.getWodCompletion(data.wodId);
+});
+// Auth Triggers
+exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
+    try {
+        await UserService_1.userService.createUser({
+            email: user.email || '',
+            displayName: user.displayName || '',
+            photoURL: user.photoURL || '',
+            role: 'athlete',
+            preferences: {
+                notifications: {
+                    email: true,
+                    push: true,
+                    wodReminders: true,
+                    leaderboardUpdates: true
+                },
+                privacySettings: {
+                    showProfile: true,
+                    showResults: true,
+                    showStats: true
+                },
+                measurementUnit: 'metric'
+            },
+            profile: {
+                experience: 'beginner'
+            }
+        });
     }
-    return Math.round(points);
-}
-// Trigger cuando se crea un nuevo resultado de WOD
+    catch (error) {
+        console.error('Error creating user profile:', error);
+    }
+});
+// Firestore Triggers
 exports.onWodResultCreated = functions.firestore
     .document('wodResults/{resultId}')
     .onCreate(async (snap, context) => {
     const result = snap.data();
-    const userStatsRef = db.collection('userStats').doc(result.userId);
-    const points = calculatePoints(result);
     try {
-        await db.runTransaction(async (transaction) => {
-            const statsDoc = await transaction.get(userStatsRef);
-            const currentStats = statsDoc.exists ? statsDoc.data() : {
-                totalWods: 0,
-                completedWods: 0,
-                points: 0,
-                rxCount: 0,
-                scaledCount: 0,
-                beginnerCount: 0,
-                lastUpdated: admin.firestore.Timestamp.now(),
-            };
-            // Actualizar contadores
-            currentStats.totalWods += 1;
-            currentStats.completedWods += 1;
-            currentStats.points += points;
-            // Actualizar contadores por nivel
-            switch (result.level) {
-                case 'rx':
-                    currentStats.rxCount += 1;
-                    break;
-                case 'scaled':
-                    currentStats.scaledCount += 1;
-                    break;
-                case 'beginner':
-                    currentStats.beginnerCount += 1;
-                    break;
-            }
-            currentStats.lastUpdated = admin.firestore.Timestamp.now();
-            transaction.set(userStatsRef, currentStats, { merge: true });
-        });
+        await WodService_1.wodService.updateUserStats(result.userId);
     }
     catch (error) {
         console.error('Error updating user stats:', error);
-        throw error;
-    }
-});
-// Función programada para calcular rankings diarios
-exports.calculateDailyRankings = functions.pubsub
-    .schedule('0 0 * * *')
-    .timeZone('America/New_York')
-    .onRun(async (context) => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    try {
-        // Obtener todos los resultados de ayer
-        const resultsSnapshot = await db.collection('wodResults')
-            .where('createdAt', '>=', yesterday)
-            .where('createdAt', '<', today)
-            .get();
-        // Agrupar resultados por WOD y nivel
-        const rankings = {};
-        resultsSnapshot.forEach((doc) => {
-            const result = doc.data();
-            if (!rankings[result.wodId]) {
-                rankings[result.wodId] = {
-                    rx: [],
-                    scaled: [],
-                    beginner: [],
-                };
-            }
-            rankings[result.wodId][result.level].push(Object.assign(Object.assign({}, result), { points: calculatePoints(result) }));
-        });
-        // Guardar rankings
-        const rankingsRef = db.collection('rankings').doc(yesterday.toISOString().split('T')[0]);
-        await rankingsRef.set(rankings);
-        return null;
-    }
-    catch (error) {
-        console.error('Error calculating daily rankings:', error);
-        throw error;
-    }
-});
-// Función para limpiar archivos antiguos de Storage
-exports.cleanupOldFiles = functions.pubsub
-    .schedule('0 0 * * 0') // Cada domingo a medianoche
-    .timeZone('America/New_York')
-    .onRun(async (context) => {
-    const bucket = admin.storage().bucket();
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    try {
-        const [files] = await bucket.getFiles();
-        const deletionPromises = files
-            .filter((file) => {
-            const metadata = file.metadata;
-            return metadata.timeCreated && new Date(metadata.timeCreated) < thirtyDaysAgo;
-        })
-            .map((file) => file.delete());
-        await Promise.all(deletionPromises);
-        return null;
-    }
-    catch (error) {
-        console.error('Error cleaning up old files:', error);
-        throw error;
     }
 });
 //# sourceMappingURL=index.js.map

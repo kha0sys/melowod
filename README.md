@@ -5,11 +5,21 @@ Una aplicación moderna y eficiente para gestionar y seguir tus WODs (Workout of
 ## ✨ Características Principales
 
 - **Gestión de WODs**: Crea, edita y programa tus entrenamientos diarios
-- **Seguimiento de Progreso**: Registra tus tiempos, pesos y repeticiones
-- **Sistema de Gamificación**: Gana puntos y medallas por completar WODs
-- **Rankings y Competencia**: Compite con otros usuarios y sube en el ranking
-- **Estadísticas Detalladas**: Visualiza tu progreso con gráficos y métricas
-- **Modo Offline**: Continúa usando la app sin conexión a internet
+  - Soporte para AMRAP, For Time y EMOM
+  - Registro detallado de movimientos y duración
+  - Niveles RX, Scaled y Beginner
+- **Seguimiento de Progreso**: 
+  - Registra tus tiempos, pesos y repeticiones
+  - Sube fotos y videos de tus entrenamientos
+  - Añade notas personales
+- **Sistema de Gamificación**: 
+  - Gana puntos por completar WODs
+  - Actualización automática de estadísticas
+  - Rankings en tiempo real
+- **Estadísticas Detalladas**: 
+  - Visualiza tu progreso con gráficos
+  - Análisis por tipo de WOD
+  - Comparativas temporales
 
 ## 🎯 Para Quién es MeloWOD
 
@@ -18,7 +28,7 @@ Una aplicación moderna y eficiente para gestionar y seguir tus WODs (Workout of
 - Boxes y gimnasios que buscan una plataforma de gestión
 - Cualquier persona interesada en seguir su progreso fitness
 
-## 📁 Estructura del Proyecto y Arquitectura
+## 📁 Estructura del Proyecto
 
 ```plaintext
 /
@@ -27,34 +37,16 @@ Una aplicación moderna y eficiente para gestionar y seguir tus WODs (Workout of
 │   │   ├── domain/          # Modelos y lógica de negocio
 │   │   ├── application/     # Casos de uso
 │   │   ├── infrastructure/  # Servicios externos
-│   │   ├── components/      # Componentes React
-│   │   │   ├── atoms/      # Componentes básicos
-│   │   │   ├── molecules/  # Combinaciones de átomos
-│   │   │   ├── organisms/  # Componentes complejos
-│   │   │   └── templates/  # Layouts y plantillas
-│   │   ├── hooks/          # Custom hooks
-│   │   ├── lib/            # Utilidades y configuraciones
-│   │   ├── services/       # Servicios de Firebase
-│   │   ├── types/          # Definiciones de tipos
-│   │   └── schemas/        # Esquemas de validación
-│   └── public/           # Archivos estáticos
-│
-├── backend/           # API en Go
-│   ├── domain/           # Entidades y reglas de negocio
-│   ├── usecase/          # Casos de uso
-│   ├── interface/        # Controladores y presentadores
-│   └── infrastructure/   # Implementaciones concretas
-│
-├── functions/         # Cloud Functions
+│   │   └── components/      # Componentes React
+├── functions/          # Firebase Cloud Functions
 │   ├── src/
-│   │   ├── auth/         # Funciones de autenticación
-│   │   ├── wods/         # Funciones de WODs
-│   │   └── gamification/ # Sistema de puntos
-│   └── lib/           # Código compartido
-│
-├── firebase.json     # Configuración de Firebase
-├── firestore.rules   # Reglas de seguridad
-└── storage.rules     # Reglas de almacenamiento
+│   │   ├── domain/         # Entidades y reglas de negocio
+│   │   ├── application/    # Lógica de aplicación
+│   │   └── infrastructure/ # Implementaciones
+└── docs/              # Documentación detallada
+    ├── api.md         # Documentación de API
+    ├── architecture.md # Arquitectura del sistema
+    └── development.md # Guía de desarrollo
 ```
 
 ## 🏗️ Arquitectura y Patrones de Diseño
@@ -124,6 +116,58 @@ La aplicación sigue los principios de Clean Architecture, separando las respons
 - Generación de estadísticas y reportes personalizados
 - Tareas programadas de mantenimiento y optimización
 
+## 🔧 Firebase Configuration
+
+The project uses Firebase services (Authentication, Firestore, and Storage) with a singleton pattern implementation to ensure efficient resource usage and proper initialization. Here's how it works:
+
+### Key Features
+
+1. **Singleton Pattern**
+   - Single instance of Firebase services
+   - Lazy initialization
+   - Thread-safe service access
+
+2. **Environment Variables**
+   - Firebase configuration is loaded from `.env.local`
+   - Required variables are validated on initialization
+   - Clear error messages for missing configurations
+
+3. **Service Access**
+   - Safe getters for all Firebase services:
+     ```typescript
+     import { 
+       getFirebaseApp, 
+       getFirebaseAuth, 
+       getFirebaseDb, 
+       getFirebaseStorage 
+     } from '@/config/firebase';
+     ```
+
+### Usage Example
+
+```typescript
+import { getFirebaseAuth, getFirebaseDb } from '@/config/firebase';
+
+const auth = getFirebaseAuth();
+const db = getFirebaseDb();
+
+// Use services safely...
+```
+
+### Required Environment Variables
+
+Create a `.env.local` file with these Firebase configuration values:
+
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id
+```
+
 ## 🔄 Sistema de Caché y Estado
 
 ### Estado Global
@@ -175,14 +219,6 @@ firebase emulators:start
 cd frontend
 npm run dev
 ```
-
-## 📱 Características de la PWA
-
-- Instalable como aplicación nativa
-- Funcionalidad offline completa
-- Sincronización en segundo plano
-- Notificaciones push
-- Actualizaciones automáticas
 
 ## 🤝 Contribución
 
